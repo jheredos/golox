@@ -11,6 +11,8 @@ import (
 
 var hadError bool = false
 
+// here's a change
+
 func main() {
 	if len(os.Args) > 2 {
 		fmt.Println("Usage: golox [script]")
