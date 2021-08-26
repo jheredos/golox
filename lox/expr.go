@@ -13,7 +13,7 @@ type BinaryExpr struct {
 }
 
 // Accept ...
-func (be *BinaryExpr) Accept(v ExprVisitor) interface{} {
+func (be BinaryExpr) Accept(v ExprVisitor) interface{} {
 	return nil
 }
 
@@ -24,17 +24,17 @@ type UnaryExpr struct {
 }
 
 // Accept ...
-func (ue *UnaryExpr) Accept(v ExprVisitor) interface{} {
+func (ue UnaryExpr) Accept(v ExprVisitor) interface{} {
 	return nil
 }
 
 // GroupingExpr denotes an expression in parentheses
 type GroupingExpr struct {
-	Expr
+	Expr Expr
 }
 
 // Accept ...
-func (ge *GroupingExpr) Accept(v ExprVisitor) interface{} {
+func (ge GroupingExpr) Accept(v ExprVisitor) interface{} {
 	return nil
 }
 
@@ -44,14 +44,14 @@ type LiteralExpr struct {
 }
 
 // Accept ...
-func (le *LiteralExpr) Accept(v ExprVisitor) interface{} {
+func (le LiteralExpr) Accept(v ExprVisitor) interface{} {
 	return nil
 }
 
 // ExprVisitor ...
 type ExprVisitor interface {
-	VisitBinaryExpr(be *BinaryExpr) interface{}
-	VisitUnaryExpr(ue *UnaryExpr) interface{}
-	VisitGroupingExpr(ge *GroupingExpr) interface{}
-	VisitLiteralExpr(le *LiteralExpr) interface{}
+	VisitBinaryExpr(be BinaryExpr) interface{}
+	VisitUnaryExpr(ue UnaryExpr) interface{}
+	VisitGroupingExpr(ge GroupingExpr) interface{}
+	VisitLiteralExpr(le LiteralExpr) interface{}
 }

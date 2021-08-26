@@ -1,143 +1,137 @@
 package lox
 
-// Parse converts a slice of Token to a slice of statements (?), returning the Abstract Syntax Tree
-func Parse(tokens []Token) []Stmt {
-	current := 0
-	stmts := make([]Stmt, 0)
+import "fmt"
 
-	check := func(expected TokenType) bool {
+// recursive descent descends through the grammar with each token
+
+// expression 	-> equality ;
+// equality 		-> comparison ( ( "!=" | "==" ) comparison )* ;
+// comparison 	-> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+// term					-> factor ( ( "-" | "+" ) factor )* ;
+// factor				-> unary ( ( "/" | "*" ) unary )* ;
+// unary				-> ( "!" | "-" ) unary | primary ;
+// primary			-> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
+
+// Parse takes a slice of Token and creates an Abstract Syntax Tree of Expr using the Recursive Descent method
+func Parse(tokens []Token) (Expr, error) {
+	var expression, equality, comparison, term, factor, unary, primary func() (Expr, error)
+	current := 0
+
+	match := func(types ...TokenType) bool {
 		if current >= len(tokens) {
 			return false
 		}
-		return tokens[current].Type == expected
-	}
-
-	// peek := func() Token {
-	// 	return tokens[current]
-	// }
-
-	previous := func() Token {
-		return tokens[current-1]
-	}
-
-	advance := func() Token {
-		if current < len(tokens) {
-			current++
-		}
-		return previous()
-	}
-
-	match := func(types ...TokenType) bool {
 		for _, t := range types {
-			if check(t) {
-				advance()
+			if tokens[current].Type == t {
+				current++
 				return true
 			}
 		}
 		return false
 	}
 
-	consume := func(t TokenType) Token {
-		// if !check(t) {
-		// 	fmt.Println("Unexpected Token?")
-		// 	return nil
-		// }
-		return advance()
+	previous := func() Token {
+		return tokens[current-1]
 	}
 
-	// recursive descent descends through the grammar with each token
-	var expression func() Expr // expression 	-> equality ;
-	var equality func() Expr   // equality 		-> comparison ( ( "!=" | "==" ) comparison )* ;
-	var comparison func() Expr // comparison 	-> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-	var term func() Expr       // term					-> factor ( ( "-" | "+" ) factor )* ;
-	var factor func() Expr     // factor				-> unary ( ( "/" | "*" ) unary )* ;
-	var unary func() Expr      // unary				-> ( "!" | "-" ) unary | primary ;
-	var primary func() Expr    // primary			-> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
-
-	expression = func() Expr {
+	// expression -> equality ;
+	expression = func() (Expr, error) {
 		return equality()
 	}
 
-	equality = func() Expr {
-		expr := comparison()
+	// equality -> comparison ( ( "!=" | "==" ) comparison )* ;
+	equality = func() (Expr, error) {
+		expr, err := comparison()
 		for match(BangEqual, EqualEqual) {
-			expr = &BinaryExpr{
+			operator := previous()
+			right, _ := comparison()
+			expr = BinaryExpr{
 				Left:     expr,
-				Operator: previous(),
-				Right:    comparison(),
+				Operator: operator,
+				Right:    right,
 			}
 		}
-		return expr
+		return expr, err
 	}
 
-	comparison = func() Expr {
-		expr := term()
+	// comparison -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+	comparison = func() (Expr, error) {
+		expr, err := term()
 		for match(Greater, GreaterEqual, Less, LessEqual) {
-			expr = &BinaryExpr{
+			operator := previous()
+			right, _ := term()
+			expr = BinaryExpr{
 				Left:     expr,
-				Operator: previous(),
-				Right:    term(),
+				Operator: operator,
+				Right:    right,
 			}
 		}
-		return expr
+		return expr, err
 	}
 
-	term = func() Expr {
-		expr := factor()
+	// term	-> factor ( ( "-" | "+" ) factor )* ;
+	term = func() (Expr, error) {
+		expr, err := factor()
 		for match(Minus, Plus) {
-			expr = &BinaryExpr{
+			operator := previous()
+			right, _ := factor()
+			expr = BinaryExpr{
 				Left:     expr,
-				Operator: previous(),
-				Right:    factor(),
+				Operator: operator,
+				Right:    right,
 			}
 		}
-		return expr
+		return expr, err
 	}
 
-	factor = func() Expr {
-		expr := unary()
+	// factor	-> unary ( ( "/" | "*" ) unary )* ;
+	factor = func() (Expr, error) {
+		expr, err := unary()
 		for match(Slash, Star) {
-			expr = &BinaryExpr{
+			operator := previous()
+			right, _ := unary()
+			expr = BinaryExpr{
 				Left:     expr,
-				Operator: previous(),
-				Right:    unary(),
+				Operator: operator,
+				Right:    right,
 			}
 		}
-		return expr
+		return expr, err
 	}
 
-	unary = func() Expr {
-		if match(Minus, Bang) {
-			return &UnaryExpr{
-				Operator: previous(),
-				Right:    unary(),
-			}
+	// unary -> ( "!" | "-" ) unary | primary ;
+	unary = func() (Expr, error) {
+		if match(Bang, Minus) {
+			operator := previous()
+			right, err := unary()
+			return UnaryExpr{
+				Operator: operator,
+				Right:    right,
+			}, err
 		}
 		return primary()
 	}
 
-	primary = func() Expr {
-		if match(False) {
-			return &LiteralExpr{Value: False}
-		} else if match(True) {
-			return &LiteralExpr{Value: True}
-		} else if match(Nil) {
-			return &LiteralExpr{Value: Nil}
-		} else if match(Number, String) {
-			return &LiteralExpr{Value: previous().Literal}
-		} else if match(LeftParen) {
-			expr := expression() // loop back to the top of the grammar if a "(" is found
-			consume(RightParen)
-			return &GroupingExpr{Expr: expr}
+	// primary -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
+	primary = func() (Expr, error) {
+		if match(Number, String, True, False, Nil) {
+			return LiteralExpr{Value: previous()}, nil
 		}
-		return nil
+		if match(LeftParen) {
+			expr, _ := expression()
+			if match(RightParen) {
+				current++
+			}
+			return GroupingExpr{Expr: expr}, nil
+		}
+		return nil, fmt.Errorf("Parsing error on line %d: Unexpected token \"%s\"", tokens[current].Line, tokens[current].Lexeme)
 	}
 
-	// main parsing loop
-	for current < len(tokens) {
-		// stmts = append(stmts, expression())
-		break
+	var root Expr
+	var err error
+	for current < len(tokens) && tokens[current].Type != EOF {
+		root, err = expression()
 	}
 
-	return stmts
+	return root, err
 }
