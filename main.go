@@ -27,7 +27,12 @@ func runFile(path string) {
 		panic(err)
 	}
 
-	tokens := lox.Lex(string(bytes))
+	tokens, err := lox.Lex(string(bytes))
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 	_, err = lox.Parse(tokens)
 	if err != nil {
 		fmt.Println(err)
@@ -44,15 +49,21 @@ func runPrompt() {
 		fmt.Print("> ")
 		line, err := reader.ReadString('\n')
 
-		tokens := lox.Lex(line)
+		tokens, err := lox.Lex(line)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
 
 		_, err = lox.Parse(tokens)
 		if err != nil {
 			fmt.Println(err)
+			continue
 		}
 
 		if err := run(line); err != nil {
 			fmt.Println(err)
+			continue
 		}
 	}
 }

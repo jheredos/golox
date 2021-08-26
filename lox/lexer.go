@@ -22,9 +22,9 @@ var keywords = map[string]TokenType{
 }
 
 // Lex is the wrapper function for the tail-recursive lexHelper()
-func Lex(source string) []Token {
+func Lex(source string) ([]Token, error) {
 	tokens := make([]Token, 0)
-	return lexHelper(tokens, source, 1)
+	return lexHelper(tokens, source, 1, nil)
 }
 
 func newToken(ttype TokenType, value string, line int) Token {
@@ -103,21 +103,24 @@ func isAlphaNumeric(r byte) bool {
 // lexHelper is the tail-recursive helper function for Lex()
 // it is the main lexing switch, recursing through the string and matching tokens
 // that it appends to the current slice of Token, along with tracking line number
-func lexHelper(current []Token, tail string, line int) []Token {
+func lexHelper(current []Token, tail string, line int, err error) ([]Token, error) {
+	if err != nil {
+		return current, err
+	}
 	if len(tail) == 0 {
-		return append(current, newToken(EOF, "\x00", line))
+		return append(current, newToken(EOF, "\x00", line)), nil
 	}
 	r := tail[0]
 	switch r {
 	// whitespace
 	case '\n':
-		return lexHelper(current, tail[1:], line+1)
+		return lexHelper(current, tail[1:], line+1, nil)
 	case '\t':
-		return lexHelper(current, tail[1:], line)
+		return lexHelper(current, tail[1:], line, nil)
 	case '\r':
-		return lexHelper(current, tail[1:], line)
+		return lexHelper(current, tail[1:], line, nil)
 	case ' ':
-		return lexHelper(current, tail[1:], line)
+		return lexHelper(current, tail[1:], line, nil)
 
 	// single-character tokens
 	case '(':
@@ -125,60 +128,70 @@ func lexHelper(current []Token, tail string, line int) []Token {
 			append(current, newToken(LeftParen, string(r), line)),
 			tail[1:],
 			line,
+			nil,
 		)
 	case ')':
 		return lexHelper(
 			append(current, newToken(RightParen, string(r), line)),
 			tail[1:],
 			line,
+			nil,
 		)
 	case '{':
 		return lexHelper(
 			append(current, newToken(LeftBrace, string(r), line)),
 			tail[1:],
 			line,
+			nil,
 		)
 	case '}':
 		return lexHelper(
 			append(current, newToken(RightBrace, string(r), line)),
 			tail[1:],
 			line,
+			nil,
 		)
 	case ',':
 		return lexHelper(
 			append(current, newToken(Comma, string(r), line)),
 			tail[1:],
 			line,
+			nil,
 		)
 	case '.':
 		return lexHelper(
 			append(current, newToken(Dot, string(r), line)),
 			tail[1:],
 			line,
+			nil,
 		)
 	case '-':
 		return lexHelper(
 			append(current, newToken(Minus, string(r), line)),
 			tail[1:],
 			line,
+			nil,
 		)
 	case '+':
 		return lexHelper(
 			append(current, newToken(Plus, string(r), line)),
 			tail[1:],
 			line,
+			nil,
 		)
 	case ';':
 		return lexHelper(
 			append(current, newToken(Semicolon, string(r), line)),
 			tail[1:],
 			line,
+			nil,
 		)
 	case '*':
 		return lexHelper(
 			append(current, newToken(Star, string(r), line)),
 			tail[1:],
 			line,
+			nil,
 		)
 
 	// 1-2 characters
@@ -189,12 +202,14 @@ func lexHelper(current []Token, tail string, line int) []Token {
 					append(current, newToken(BangEqual, "!=", line)),
 					tail[2:],
 					line,
+					nil,
 				)
 			}
 			return lexHelper(
 				append(current, newToken(Bang, string(r), line)),
 				tail[1:],
 				line,
+				nil,
 			)
 		}
 	case '=':
@@ -204,12 +219,14 @@ func lexHelper(current []Token, tail string, line int) []Token {
 					append(current, newToken(EqualEqual, "==", line)),
 					tail[2:],
 					line,
+					nil,
 				)
 			}
 			return lexHelper(
 				append(current, newToken(Equal, string(r), line)),
 				tail[1:],
 				line,
+				nil,
 			)
 		}
 	case '<':
@@ -219,12 +236,14 @@ func lexHelper(current []Token, tail string, line int) []Token {
 					append(current, newToken(LessEqual, "<=", line)),
 					tail[2:],
 					line,
+					nil,
 				)
 			}
 			return lexHelper(
 				append(current, newToken(Less, string(r), line)),
 				tail[1:],
 				line,
+				nil,
 			)
 		}
 	case '>':
@@ -234,12 +253,14 @@ func lexHelper(current []Token, tail string, line int) []Token {
 					append(current, newToken(GreaterEqual, ">=", line)),
 					tail[2:],
 					line,
+					nil,
 				)
 			}
 			return lexHelper(
 				append(current, newToken(Greater, string(r), line)),
 				tail[1:],
 				line,
+				nil,
 			)
 		}
 
@@ -251,12 +272,14 @@ func lexHelper(current []Token, tail string, line int) []Token {
 					current,
 					skipComment(tail[2:]),
 					line+1,
+					nil,
 				)
 			}
 			return lexHelper(
 				append(current, newToken(Slash, string(r), line)),
 				tail[1:],
 				line,
+				nil,
 			)
 		}
 
@@ -267,6 +290,7 @@ func lexHelper(current []Token, tail string, line int) []Token {
 			append(current, newToken(String, val, line)),
 			newTail,
 			line+lines,
+			nil,
 		)
 
 	default:
@@ -278,6 +302,7 @@ func lexHelper(current []Token, tail string, line int) []Token {
 					append(current, newToken(Number, val, line)),
 					newTail,
 					line,
+					nil,
 				)
 				// identifiers
 			} else if isAlpha(r) {
@@ -288,16 +313,18 @@ func lexHelper(current []Token, tail string, line int) []Token {
 						append(current, newToken(ttype, val, line)),
 						newTail,
 						line,
+						nil,
 					)
 				}
 				return lexHelper(
 					append(current, newToken(Identifier, val, line)),
 					newTail,
 					line,
+					nil,
 				)
 			} else {
-				fmt.Printf("Error at line %d: unexpected character \"%b\"", line, r)
-				return current
+				err = fmt.Errorf("Lexing error at line %d: unexpected character \"%s\"", line, string(r))
+				return current, err
 			}
 		}
 	}
