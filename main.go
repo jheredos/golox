@@ -33,13 +33,13 @@ func runFile(path string) {
 		os.Exit(1)
 	}
 
-	_, err = lox.Parse(tokens)
+	program, err := lox.Parse(tokens)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	// run(ast)
+	program.Interpret()
 }
 
 func runPrompt() {
@@ -55,16 +55,13 @@ func runPrompt() {
 			continue
 		}
 
-		_, err = lox.Parse(tokens)
+		program, err := lox.Parse(tokens)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
 
-		if err := run(line); err != nil {
-			fmt.Println(err)
-			continue
-		}
+		program.Interpret()
 	}
 }
 

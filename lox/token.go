@@ -2,8 +2,10 @@ package lox
 
 import "fmt"
 
-type TokenType int
+// TokenType includes every type of operator, keyword, and literal in Lox
+type TokenType uint8
 
+// TokenType values
 const (
 	// single character
 	LeftParen TokenType = iota
@@ -54,17 +56,19 @@ const (
 	EOF
 )
 
+// Token represents a token as produced by the lexer. Lexeme stores the string value of the token, and line the line number of the original file where the token is located
 type Token struct {
-	Type    TokenType
-	Lexeme  string
-	Literal interface{}
-	Line    int
+	Type   TokenType
+	Lexeme string
+	Line   int
 }
 
-func NewToken(typ TokenType, lexeme string, literal interface{}, line int) *Token {
-	return &Token{typ, lexeme, literal, line}
+// NewToken creates a new token of the given type
+func NewToken(typ TokenType, lexeme string, line int) *Token {
+	return &Token{typ, lexeme, line}
 }
 
+// ToString represents a token as a string
 func (t Token) ToString() string {
-	return fmt.Sprintf("%v %v %v", t.Type, t.Lexeme, t.Literal)
+	return fmt.Sprintf("%v %v", t.Type, t.Lexeme)
 }
